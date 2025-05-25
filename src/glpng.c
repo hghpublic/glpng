@@ -483,6 +483,7 @@ static int pngLoadCommon(int mipmap, int trans, pngInfo *pinfo, png_structp png,
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
 		#ifdef SUPPORTS_PALETTE_EXT
+		#ifdef _WIN32
 		if (PalettedTextures && mipmap >= 0 && trans == PNG_SOLID && color == PNG_COLOR_TYPE_PALETTE) {
 			png_colorp pal;
 			int cols;
@@ -506,6 +507,7 @@ static int pngLoadCommon(int mipmap, int trans, pngInfo *pinfo, png_structp png,
 			glTexImage2D(GL_TEXTURE_2D, mipmap, intf, width, height, 0, GL_COLOR_INDEX, GL_UNSIGNED_BYTE, data);
 		}
 		else
+		#endif
 		#endif
 		if (trans == PNG_SOLID || trans == PNG_ALPHA || trans == PNG_LUMINANCEALPHA || color == PNG_COLOR_TYPE_RGB_ALPHA || color == PNG_COLOR_TYPE_GRAY_ALPHA) {
 			GLenum glformat;
