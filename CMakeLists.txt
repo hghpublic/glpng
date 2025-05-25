@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.5 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.13...4.0)
 
 project(glpng C)
 include(GNUInstallDirs)
@@ -7,11 +7,10 @@ set(SONAME_VERSION 1)
 set(MINOR_VERSION 46)
 set(VERSION ${SONAME_VERSION}.${MINOR_VERSION})
 
-set(BUILD_STATIC_LIBS ON CACHE BOOL "Set to ON to build static libraries")
-
-find_package(ZLIB REQUIRED)
 find_package(PNG REQUIRED)
-find_package(OpenGL REQUIRED)
+find_package(OpenGL REQUIRED COMPONENTS OpenGL)
+
+add_link_options(LINKER:-z,defs)
 
 add_subdirectory(src)
 configure_file(FindGLPNG.cmake.in FindGLPNG.cmake @ONLY)
