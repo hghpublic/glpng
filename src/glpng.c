@@ -1,5 +1,5 @@
 /*
- * PNG loader library for OpenGL v1.46 (02/06/14)
+ * PNG loader library for OpenGL v1.47 (25/05/2025)
  * by Ben Wyatt ben@wyatt100.freeserve.co.uk
  * Using LibPNG 1.0.2 and ZLib 1.1.3
  *

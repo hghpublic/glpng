@@ -4,7 +4,7 @@ project(glpng C)
 include(GNUInstallDirs)
 
 set(SONAME_VERSION 1)
-set(MINOR_VERSION 46)
+set(MINOR_VERSION 47)
 set(VERSION ${SONAME_VERSION}.${MINOR_VERSION})
 
 find_package(PNG REQUIRED)
