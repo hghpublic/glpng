@@ -8,3 +8,10 @@ CMakeCache.txt
 cmake_install.cmake
 
 /FindGLPNG.cmake
+
+
+# macos
+.DS_Store
+
+# cmake
+build/
