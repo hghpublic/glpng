@@ -1,0 +1,402 @@
+//  pandoc --from html --to asciidoc --standalone glpng.htm > glpng.adoc
+= PNG loader library for OpenGL v1.47 (25/05/2025)
+:toc:
+:sectnums:
+:icons: font
+:experimental:
+:stem:
+
+Ben Wyatt ben@wyatt100.freeserve.co.uk
+
+
+== Introduction
+
+This is a library for `OpenGL` to load `PNG` graphics files as an `OpenGL`
+texture as easily as possible. It also has a number of options for
+generating the alpha channel and mipmaps. It is implemented using
+modified versions of the `LibPNG 1.0.2` and `ZLib 1.1.3` libraries.
+
+This software is provided _as-is_, without any express or implied
+warranty. In no event will the author be held liable for any damages
+arising from the use of this software.
+
+Permission is hereby granted to use, copy, modify, and distribute this
+source code, or portions hereof, for any purpose, without fee, subject
+to the following restrictions:
+
+. The origin of this source code must not be misrepresented. You must
+not claim that you wrote the original software. If you use this software
+in a product, an acknowledgment in the product documentation would be
+appreciated but is not required.
+. Altered versions must be plainly marked as such and must not be
+misrepresented as being the original source.
+. This notice must not be removed or altered from any source
+distribution.
+
+== Installation for MSDEV
+
+Copy `glpng.h` to your `include/GL` folder and copy `glpng.lib` and `glpngd.lib`
+to your lib folder. Then just do `#include <GL/glpng.h>` and with
+a bit of luck, MSDEV will automatically link with `glpng.lib` (release
+lib) or `glpngd.lib` (debug lib).
+
+== Installation for Any Other Compiler
+
+Copy `glpng.h` to your `include/GL` folder. Then you'll have to build the
+library yourself with the included source code. Included are makefiles
+for `Linux` and `SGI`. If you need to modify the source code to make it work
+on your system, please get in contact so I can make future versions
+compatible.
+
+== Compiling with `LibPNG` or `ZLib`
+
+If you are using `LibPNG` or `ZLib` in your project there may be problems if
+you link with the glpng library. To solve this, include `glpng.c` in your
+project and, if you're using MSDEV, modify `glpng.h` to not automatically
+link with `glpng.lib` or `glpngd.lib`.
+
+== OpenGL DLL Dynamic Loading using glsetup
+
+To use `glpng` with `glsetup`, include `glpng.c`, `LibPNG` and `ZLib` in your
+project. In `glpng.c`, change `#include <GL/gl.h>` to include the
+`glsetup` include and modify `glpng.h` to not automatically link with
+`glpng.lib` or `glpngd.lib`.
+
+== Functions
+
+=== `pngLoad`
+
+[source, c]
+----
+success = pngLoad(filename, mipmap, trans, info)
+----
+
+[width="100%",cols="~,~",]
+|===
+.<| `filename` <| Filename of `PNG` file, including `.png`
+
+.<| `mipmap` a|
+Mipmapping parameter:
+
+* 0 or `PNG_NOMIPMAP` if no mipmap or for the base mipmap level
+* 1,2,3... for mipmap detail level
+* `PNG_BUILDMIPMAPS` to call a clone of `gluBuild2DMipmaps` (box filter)
+* `PNG_SIMPLEMIPMAPS` to generate mipmaps without filtering (uses
+upper-left of each 2x2 box)
+
+.<| `trans` a|
+Transparency setting:
+
+* `PNG_ALPHA` to use alpha channel in `PNG` file, if there is one
+* `PNG_SOLID` for no transparency
+* [#PNG_STENCIL]#`PNG_STENCIL`# to set pixels of a certain value to
+alpha 0, otherwise 1 (see link:#SetStencil[pngSetStencil])
+* `PNG_BLEND1` to set alpha to r + g + b
+* `PNG_BLEND2` to set alpha to (r + g + b)/2
+* `PNG_BLEND3` to set alpha to (r + g + b)/3
+* `PNG_BLEND4` to set alpha to r^2 + g^2 + b^2
+* `PNG_BLEND5` to set alpha to (r^2 + g^2 + b^2)/2
+* `PNG_BLEND6` to set alpha to (r^2 + g^2 + b^2)/3
+* `PNG_BLEND7` to set alpha to (r^2 + g^2 + b^2)/4
+* `PNG_BLEND8` to set alpha to sqrt(r^2 + g^2 + b^2)
+* [#PNG_CALLBACK]#`PNG_CALLBACK`# to use the callback function defined
+by link:#pngSetAlphaCallback[pngSetAlphaCallback].
+* `PNG_LUMINANCE_ALPHA`
+
+.<| `info` a|
+Pointer to a pngInfo structure to store texture info or `NULL` if you
+don't care. The `pngInfo` fields are:
+
+* `Width` - width of the original image in pixels
+* `Height` - height of the original image in pixels
+* `Depth` - depth of the original image, where colours = 2^Depth
+* `Alpha` - the number of bits used for the alpha channel (0 if no alpha
+channel)
+
+|===
+
+Loads a `PNG` file and calls `glTexImage2D` with appropriate parameters. The
+texture will be resized if the dimensions are not powers of 2 or over
+the maximum texture size. Should be able to load all colour depths
+(except 64-bit) and alpha channels if available. It converts them to an
+appropriate format and gives them to `glTexImage2D`. The `OpenGL` paletted
+texture extension is used if available.
+
+Returns 1 on success or 0 if file could not be loaded.
+
+=== `pngLoadF`
+
+[source, c]
+----
+success = pngLoadF(file, mipmap, trans, info)
+----
+
+
+[cols="~,~"]
+|===
+|file |FILE opened with fopen("something.png", "rb")
+|===
+
+This is used to load a PNG from an already opened file. Handy if you
+want to batch all your data and textures into one big data file.
+
+=== `pngLoadMem`
+[source, c]
+----
+success = pngLoadMem(mem, size, mipmap, trans, info)
+----
+
+
+[cols="~,~"]
+|===
+|mem |Pointer to a buffer
+|size |Size of the buffer
+|===
+
+This is used to load a PNG from a memory buffer.
+
+=== `pngBind`, `pngBindF`, `pngBindMem`
+
+[source, c]
+----
+id = pngBind(filename, mipmap, trans, info, wrapst, minfilter, magfilter)
+id = pngBindF(file, mipmap, trans, info, wrapst, minfilter, magfilter)
+id = pngBindMem(mem, size, mipmap, trans, info, wrapst, minfilter, magfilter)
+----
+
+
+[cols="~,~"]
+|===
+|wrapst |GL++_++CLAMP or GL++_++REPEAT (look up glTexParameter)
+|minfilter |Minification function for filtering (look up glTexParameter)
+|magfilter |Magnification function for filtering (look up glTexParamter)
+|===
+
+Automates the process further - loads a PNG file, sets the OpenGL
+parameters, binds it to an OpenGL texture and returns it's ID, or 0 if
+the file couldn't be loaded.
+
+=== `pngLoadRaw`, `pngLoadRawF`
+
+[source, c]
+----
+success = pngLoadRaw(filename, rawinfo)
+success = pngLoadRawF(file, rawinfo)
+----
+
+
+[width="100%",cols="~,~",]
+|===
+|rawinfo a|
+Pointer to a pngRawInfo structure in which to store the PNG data. The
+pngRawInfo has these fields:
+
+* Width, Height, Depth, Alpha - as in pngInfo
+* Components - number of colour components (1, 2, 3 or 4)
+* Data - pointer to image data stored as RGBRGB... or RGBARGBA... or
+indices to the palette table. Must be freed manually using free()
+* Palette - pointer to palette table stored as RGBRGB... or RGBARGBA...
+Will be NULL if there is no palette table. Must be freed manually using
+free()
+
+|===
+
+=== `pngSetStencil`
+[source, c]
+----
+pngSetStencil(red, green, blue)
+----
+
+
+[cols="~,~"]
+|===
+|red,green,blue |The colour to stencil out when using the
+link:#PNG_STENCIL[PNG++_++STENCIL] option
+|===
+
+
+
+This selects the colour to stencil out when using
+link:#PNG_STENCIL[PNG++_++STENCIL]. The parameters are 0 to 255. By
+default the colour is 0,0,0 (pure black).
+
+=== `pngSetAlphaCallback`
+
+[source, c]
+----
+pngSetAlphaCallback(function)
+----
+
+
+[cols="~,~"]
+|===
+|function |Pointer to a function taking three unsigned char parameters
+(red, green, blue) and returning an unsigned char (alpha)
+|===
+
+
+
+This sets the function to be called when using
+link:#PNG_CALLBACK[PNG++_++CALLBACK]. During the alpha channel
+generation process, this function will be called for every pixel, with
+the appropriate RGB values, and will use the result for the alpha value.
+The RGB and alpha values all range from 0 to 255. The default callback
+function simply returns 255.
+
+=== `pngSetViewingGamma`
+
+[source, c]
+----
+pngSetViewingGamma(gamma)
+----
+
+
+[cols="~,~"]
+|===
+|gamma |New gamma correction value
+|===
+
+By default, gamma correction is set to 1.0 for Windows, 1.7 for SGI and
+1.45 for Macs. If the VIEWING++_++GAMMA environmental variable is set,
+that is used instead. You can override both of these values using
+pngSetViewingGamma().
+
+=== `pngSetStandardOrientation`
+
+[source, c]
+----
+pngSetStandardOrientation(standardorientation)
+----
+
+
+[cols="~,~"]
+|===
+|standardorientation |If to use the standard orientation (0 is default)
+|===
+
+By default, the image is loaded so that texture coordinates 0,0
+represent the top-left - a result of me not knowing the OpenGL spec :-).
+If you wish to use the standard OpenGL representation where 0,0 is the
+bottom-left, set this to 1.
+
+
+== Examples
+
+Here's an example of pngLoad(), to load "Texture.png" with nearest
+filter, clamping on and no mipmaps or alpha channels...
+
+[source, c]
+----
+pngInfo info;
+GLuint id;
+
+glGenTextures(1, &id);
+glBindTexture(GL_TEXTURE_2D, id);
+
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+
+if (pngLoad("Texture.png", PNG_NOMIPMAP, PNG_SOLID, &info)) {
+   puts("Loaded Texture.png with resounding success");
+   printf("Size=%i,%i Depth=%i Alpha=%i\n", info.Width, info.Height, info.Depth, info.Alpha);
+}
+else {
+   puts("Can't load Texture.png");
+   exit(1);
+}
+----
+
+
+And here's an example to load the same texture with the same options
+using `pngBind()` ...
+
+
+[source, c]
+----
+pngInfo info;
+GLuint id = pngBind("Texture.png", PNG_NOMIPMAP, PNG_SOLID, &info, GL_CLAMP, GL_NEAREST, GL_NEAREST);
+
+if (id != 0) {
+   puts("Loaded Texture.png with resounding success");
+   printf("Size=%i,%i Depth=%i Alpha=%i\n", info.Width, info.Height, info.Depth, info.Alpha);
+}
+else {
+   puts("Can't load Texture.png");
+   exit(1);
+}
+----
+
+
+If those two examples don't make sense, try the included full source
+example (which needs http://reality.sgi.com/opengl/glut3/glut3.html[GLUT]).
+
+== Bugs
+
+* 64-bit PNGs can't be loaded (missing LibPNG feature as far as I can
+tell).
+
+== Possible Future Developments
+
+* Better attempts could be made to find the optimal texture format for
+OpenGL. At the moment, it converts everything to 24 or 32 bit, or uses
+the paletted texture extension in certain (easy to handle) cases.
+* Other mipmap generating algorithms could be implemented (wavelet
+stuff?). Source donations are welcome.
+* Saving the frame buffer to a PNG file.
+* Support for GL++_++INTENSITY and others.
+
+== History
+
+[cols="~,~,~"]
+|===
+|1.33 | (20/5/99) | First public release.
+
+|1.34 | (27/5/99) | Optimised alpha channel generating, added Alpha
+property to the pngInfo structure, illegal texture sizes are resized.
+
+|1.35 | (4/6/99) | Added pngLoadRaw and pngLoadRawF functions.
+
+|1.36 | (9/6/99) | Fixed problem causing linking warnings/errors (I think)
+and reduced the size of the library considerably.
+
+|1.37 | (13/6/99) | Added alpha channel generation callback function.
+
+|1.38 | (22/6/99) | Stopped it from disabling texturing on calls to pngBind
+and pngBindF.
+
+|1.39 | (8/7/99) | Fixed a bug in the extensions reading code, which caused
+some machines to crash.
+
+|1.40 | (27/9/99) | Added support for SGI, Linux, and gamma correction
+(thanks to Mark B. Allan!). Fixed bug in raw reading of gray textures
+(thanks to Johann Scholtz!). Removed all use of GLU functions to make it
+easier to dynamically load opengl32.dll or 3dfxvgl.dll or whatever.
+Added simple mipmap generator.
+
+|1.41 | (20/10/99) | Made a small optimisation and improved documentation.
+Remembered to include the makefiles for Linux and SGI in the zip (!).
+
+|1.42 | (01/03/00) | Fixed problems with compiling on SGI (thanks to Thomas
+Sondergaard!). Added pngSetStandardOrientation (thanks to Scott
+Franke!).
+
+|1.43 | (11/05/00) | Added debug library and fixed the crash when there
+wasn't a terminating png info structure (thanks to Dan Hawkins!).
+
+|1.44 | (01/07/00) | Fixed release and debug libraries so they stop
+producing warnings and errors in MSDEV.
+
+|1.45 | (10/07/00) | Fixed bug where the standard orientation flag was
+being ignored in pngLoadRawF (thanks to Mark B. Allan!).
+
+|1.46 | (02/06/14) | Added memory reading functions and
+PNG++_++LUMINANCE++_++ALPHA support. Fixed CVE-2010-1519.
+
+|1.47 (25/05/25) | Build changes. Use -DBUILD++_++SHARED++_++LIBS=ON if
+you want to build the shared library with CMake.
+|===
+
+Get the latest version from +
+http://www.wyatt100.freeserve.co.uk/download.htm
