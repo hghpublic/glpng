@@ -64,10 +64,11 @@ void Reshape(int w, int h) {
 
 /***** Main function *****/
 
-void main() {
+void main(int argc, char *argv[]) {
 	pngInfo info;
 	GLuint  texture;
 
+    glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
 	glutInitWindowSize(300, 300);
 	glutCreateWindow("glpng test");
