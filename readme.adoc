@@ -1,0 +1,28 @@
+= glpng
+:toc:
+:sectnums:
+:icons: font
+:experimental:
+
+== glpng
+
+OpenGL PNG image library
+
+Original Author::
+Ben Wyatt
+
+Maintainer::
+James Le Cuirot
+
+== Repository
+
+https://repo.or.cz/glpng.git
+
+git://repo.or.cz/glpng.git
+
+== pandoc
+
+[source, shell]
+----
+pandoc --from html --to asciidoc --standalone glpng.htm > glpng.adoc
+----
