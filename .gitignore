@@ -12,6 +12,7 @@ cmake_install.cmake
 
 # macos
 .DS_Store
+temp/
 
 # cmake
 build/
